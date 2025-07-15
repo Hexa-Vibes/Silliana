@@ -26,8 +26,8 @@ async def on_ready():
   print("Silliana is logged in!")
 
 async def main():
-  # We'll be using cogs
-  # await bot.load_extension("cogs.example")
+  await bot.load_extension("cogs.reacts")
+
   await bot.start(TOKEN)
 
 if __name__ == "__main__":
