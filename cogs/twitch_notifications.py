@@ -24,11 +24,9 @@ class TwitchNotifications(commands.Cog):
         # Parse numeric environment variables with error handling
         try:
             self.notification_channel_id = int(os.getenv("TWITCH_NOTIFICATION_CHANNELID", "0"))
-            self.owner_id = int(os.getenv("OWNER_ID", "0"))
         except ValueError:
-            print("Error: Invalid channel ID or owner ID in environment variables")
+            print("Error: Invalid channel ID in environment variables")
             self.notification_channel_id = 0
-            self.owner_id = 0
         
         # API related attributes
         self.access_token: Optional[str] = None
