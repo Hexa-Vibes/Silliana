@@ -14,7 +14,7 @@ class MessageReacts(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if ("bwaa" in message.content) and (time() - self.message_ts >= 60):
+        if ("bwaa" in message.content.lower()) and (time() - self.message_ts >= 60):
             try:
                 await message.reply(stickers=[await message.guild.fetch_sticker(STICKERID)])
             except discord.Forbidden:
