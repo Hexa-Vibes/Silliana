@@ -7,7 +7,6 @@ from os import getenv
 from random import choice
 
 STICKERID = getenv("STICKERID").split(",")
-print(type(STICKERID),STICKERID)
 
 class MessageReacts(commands.Cog):
     def __init__(self, bot):
