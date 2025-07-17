@@ -16,7 +16,7 @@ class MessageReacts(commands.Cog):
     async def on_message(self, message):
         if ("bwaa" in message.content) and (time() - self.message_ts >= 60):
             try:
-                await message.reply(await message.guild.fetch_sticker(STICKERID))
+                await message.reply(stickers=[await message.guild.fetch_sticker(STICKERID)])
             except discord.Forbidden:
                 print(f"Not allowed to reply to bwaa (Message ID: {message.id})")
             except discord.HTTPException as e:
