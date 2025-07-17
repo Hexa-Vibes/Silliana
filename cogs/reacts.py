@@ -15,6 +15,8 @@ class MessageReacts(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        if message.author.bot:
+            return
         if ("bwaa" in message.content.lower()) and (time() - self.message_ts >= 15):
             try:
                 await message.reply(stickers=[await message.guild.fetch_sticker(choice(STICKERID))])
