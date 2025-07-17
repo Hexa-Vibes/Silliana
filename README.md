@@ -27,4 +27,6 @@ $ python3 silliana.py
 ```
 
 ### Contribution
-TBD
+crispy-caesus
+SenkoNyan
+herrlayre

@@ -4,8 +4,9 @@ import discord
 from discord.ext import commands
 from time import time
 from os import getenv
+from random import choice
 
-STICKERID = getenv("STICKERID")
+STICKERID = getenv("STICKERID").split(",")
 
 class MessageReacts(commands.Cog):
     def __init__(self, bot):
@@ -16,7 +17,7 @@ class MessageReacts(commands.Cog):
     async def on_message(self, message):
         if ("bwaa" in message.content.lower()) and (time() - self.message_ts >= 60):
             try:
-                await message.reply(stickers=[await message.guild.fetch_sticker(STICKERID)])
+                await message.reply(stickers=[await message.guild.fetch_sticker(choice(STICKERID))])
             except discord.Forbidden:
                 print(f"Not allowed to reply to bwaa (Message ID: {message.id})")
             except discord.HTTPException as e:
