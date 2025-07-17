@@ -39,6 +39,7 @@ async def on_ready():
 async def main():
   await bot.load_extension("cogs.reacts")
   await bot.load_extension("cogs.forms")
+  await bot.load_extension("cogs.twitch_notifications")
 
   await bot.start(TOKEN)
 
