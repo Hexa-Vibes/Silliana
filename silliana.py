@@ -17,40 +17,40 @@ TOKEN = os.getenv("TOKEN")
 APPID = os.getenv("APPID")
 
 bot = commands.Bot(
-  command_prefix=None,
-  intents=INTENTS
+    command_prefix=None,
+    intents=INTENTS
 )
 
 @bot.event
 async def on_ready():
-  print("Silliana is logged in!")
-  
+    print("Silliana is logged in!")
+
     # Set the bot's presence
-  activity = discord.Activity(
-      name="your submissions",
-      type=discord.ActivityType.watching,
-      state="👀 Stalking your submissions"  # Optional: for more detail
-  )
-  await bot.change_presence(activity=activity)
-  print("Bot presence set!")
-  
-  # Add persistent views
-  from cogs.forms import SubmissionButton
-  bot.add_view(SubmissionButton())
-  
-  # Sync slash commands automatically
-  try:
-    synced = await bot.tree.sync()
-    print(f"Synced {len(synced)} command(s)")
-  except Exception as e:
-    print(f"Failed to sync commands: {e}")
+    activity = discord.Activity(
+        name="your submissions",
+        type=discord.ActivityType.watching,
+        state="👀 Stalking your submissions"  # Optional: for more detail
+    )
+    await bot.change_presence(activity=activity)
+    print("Bot presence set!")
+
+    # Add persistent views
+    from cogs.forms import SubmissionButton
+    bot.add_view(SubmissionButton())
+
+    # Sync slash commands automatically
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
 
 async def main():
-  await bot.load_extension("cogs.reacts")
-  await bot.load_extension("cogs.forms")
-  await bot.load_extension("cogs.twitch_notifications")
+    await bot.load_extension("cogs.reacts")
+    await bot.load_extension("cogs.forms")
+    await bot.load_extension("cogs.twitch_notifications")
 
-  await bot.start(TOKEN)
+    await bot.start(TOKEN)
 
 if __name__ == "__main__":
-  asyncio.run(main())
+    asyncio.run(main())

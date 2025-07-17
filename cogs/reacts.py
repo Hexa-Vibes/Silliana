@@ -24,6 +24,6 @@ class MessageReacts(commands.Cog):
                 print(f"HTTP Exception when replying to bwaa (Message ID: {message.id}\n   {e}")
                 return
             self.message_ts = time()
-            
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(MessageReacts(bot))
