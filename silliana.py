@@ -25,6 +25,15 @@ bot = commands.Bot(
 async def on_ready():
   print("Silliana is logged in!")
   
+    # Set the bot's presence
+  activity = discord.Activity(
+      name="your submissions",
+      type=discord.ActivityType.watching,
+      state="👀 Stalking your submissions"  # Optional: for more detail
+  )
+  await bot.change_presence(activity=activity)
+  print("Bot presence set!")
+  
   # Add persistent views
   from cogs.forms import SubmissionButton
   bot.add_view(SubmissionButton())
