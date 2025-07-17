@@ -24,9 +24,21 @@ bot = commands.Bot(
 @bot.event
 async def on_ready():
   print("Silliana is logged in!")
+  
+  # Add persistent views
+  from cogs.forms import SubmissionButton
+  bot.add_view(SubmissionButton())
+  
+  # Sync slash commands automatically
+  try:
+    synced = await bot.tree.sync()
+    print(f"Synced {len(synced)} command(s)")
+  except Exception as e:
+    print(f"Failed to sync commands: {e}")
 
 async def main():
   await bot.load_extension("cogs.reacts")
+  await bot.load_extension("cogs.forms")
 
   await bot.start(TOKEN)
 
