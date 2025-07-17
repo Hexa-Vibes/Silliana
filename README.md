@@ -7,12 +7,17 @@ The bot is quite simple to set up and doesn't require any database (for now). Al
 
 For the 'Bwaa' response (or probably moderation in the future), you need to have the intent `MESSAGE_CONTENT` enabled, as required by Discord's API.
 
+And for monitoring Twitch streams (to check whether you're live or not), you need to get the credentials by registering an app in Twitch Developers Console.
+
 ### Setup
 1. For external contributors, fork the repository, then clone it to your local PC.
-2. (optional) Create a [virtual environment (venv)](https://docs.python.org/3/library/venv.html), optional but recommended to prevent library conflicts.
+2. Create a [virtual environment (venv)](https://docs.python.org/3/library/venv.html), optional but recommended to prevent library conflicts.
 3. Install the required libraries using this command:
 ```sh
 $ pip install -r requirements.txt
+
+# Or in venv (replace "{venv python path} with your venv python program")
+$ {venv python path} -m pip install -r requirements.txt
 ```
 4. Copy the `.env.template` and rename the copy to `.env`.
 5. Fill in the required configurations to the `.env` file, such as Token, App ID, Channel ID, etc.
