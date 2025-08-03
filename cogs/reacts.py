@@ -17,7 +17,13 @@ BWAA_STICKERIDS = [1296589336736698378, 1370067972592238612]
 MEOW_STICKERIDS = [1222679517038903319]
 PLUH_STICKERIDS = [1252392137392132210]
 FUMO_STICKERIDS = ["1393228729697960077"]
-FUMO_GIFS = ["https://chibisafe.crispy-caesus.eu/iZc8VAvsKtsA.gif", "https://chibisafe.crispy-caesus.eu/7uMePUKfjI21.gif", "https://chibisafe.crispy-caesus.eu/kvW9w5h6TvLf.gif", "https://chibisafe.crispy-caesus.eu/5DK1Jr3C5aHt.gif", "https://chibisafe.crispy-caesus.eu/sz7TDwpn495I.gif"]
+FUMO_GIFS = ["https://chibisafe.crispy-caesus.eu/iZc8VAvsKtsA.gif",
+             "https://chibisafe.crispy-caesus.eu/7uMePUKfjI21.gif",
+             "https://chibisafe.crispy-caesus.eu/kvW9w5h6TvLf.gif",
+             "https://chibisafe.crispy-caesus.eu/5DK1Jr3C5aHt.gif",
+             "https://chibisafe.crispy-caesus.eu/sz7TDwpn495I.gif",
+             "https://chibisafe.crispy-caesus.eu/oLNREM7vY9Ss.gif",
+             "https://chibisafe.crispy-caesus.eu/4d9m4VpGZUFh.gif"]
 
 
 class MessageReacts(commands.Cog):
