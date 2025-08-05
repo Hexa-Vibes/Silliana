@@ -12,6 +12,7 @@ MEOW_STICKERIDS = getenv("MEOW_STICKERIDS").split(",")
 PLUH_STICKERIDS = getenv("PLUH_STICKERIDS").split(",")
 FUMO_STICKERIDS = getenv("FUMO_STICKERIDS").split(",")
 FUMO_GIFS = getenv("FUMO_GIFS").split(",")
+GET_REAL_GIFS = getenv("GET_REAL_GIFS").split(",")
 """
 BWAA_STICKERIDS = [1296589336736698378, 1370067972592238612]
 MEOW_STICKERIDS = [1222679517038903319]
@@ -25,6 +26,8 @@ FUMO_GIFS = ["https://chibisafe.crispy-caesus.eu/iZc8VAvsKtsA.gif",
              "https://chibisafe.crispy-caesus.eu/oLNREM7vY9Ss.gif",
              "https://chibisafe.crispy-caesus.eu/4d9m4VpGZUFh.gif",
              "https://chibisafe.crispy-caesus.eu/Qml4ZaqQTynM.gif"]
+             "https://chibisafe.crispy-caesus.eu/4d9m4VpGZUFh.gif"]
+GET_REAL_GIFS = ["https://chibisafe.crispy-caesus.eu/NzOO2JvPcDJI.gif"]
 
 
 class MessageReacts(commands.Cog):
@@ -75,7 +78,7 @@ class MessageReacts(commands.Cog):
             return
 
         term = ""
-        terms = ["bwaa", "pluh", "fumo", "meow"]
+        terms = ["bwaa", "pluh", "fumo", "get real", "meow"]
         text = message.content.lower()
 
         # parse implementation
@@ -92,6 +95,8 @@ class MessageReacts(commands.Cog):
                 await self.reply_sticker(message, choice(PLUH_STICKERIDS))
             case "fumo":  # sticker/gif
                 await self.fumo_reaction(message)
+            case "get real":
+                await self.reply_text(message, choice(GET_REAL_GIFS))
             case "ban dami":  # regular messgae/embed
                 pass
             case "fish":  # emoji reaction
