@@ -6,29 +6,12 @@ from time import time
 from os import getenv
 from random import choice
 
-"""
 BWAA_STICKERIDS = getenv("BWAA_STICKERIDS").split(",")
 MEOW_STICKERIDS = getenv("MEOW_STICKERIDS").split(",")
 PLUH_STICKERIDS = getenv("PLUH_STICKERIDS").split(",")
 FUMO_STICKERIDS = getenv("FUMO_STICKERIDS").split(",")
 FUMO_GIFS = getenv("FUMO_GIFS").split(",")
 GET_REAL_GIFS = getenv("GET_REAL_GIFS").split(",")
-"""
-BWAA_STICKERIDS = [1296589336736698378, 1370067972592238612]
-MEOW_STICKERIDS = [1222679517038903319]
-PLUH_STICKERIDS = [1252392137392132210]
-FUMO_STICKERIDS = ["1393228729697960077"]
-FUMO_GIFS = ["https://chibisafe.crispy-caesus.eu/iZc8VAvsKtsA.gif",
-             "https://chibisafe.crispy-caesus.eu/7uMePUKfjI21.gif",
-             "https://chibisafe.crispy-caesus.eu/kvW9w5h6TvLf.gif",
-             "https://chibisafe.crispy-caesus.eu/5DK1Jr3C5aHt.gif",
-             "https://chibisafe.crispy-caesus.eu/sz7TDwpn495I.gif",
-             "https://chibisafe.crispy-caesus.eu/oLNREM7vY9Ss.gif",
-             "https://chibisafe.crispy-caesus.eu/4d9m4VpGZUFh.gif",
-             "https://chibisafe.crispy-caesus.eu/Qml4ZaqQTynM.gif",
-             "https://chibisafe.crispy-caesus.eu/jnCH3bMfahl1.gif"]
-GET_REAL_GIFS = ["https://chibisafe.crispy-caesus.eu/NzOO2JvPcDJI.gif"]
-
 
 class MessageReacts(commands.Cog):
     def __init__(self, bot):
