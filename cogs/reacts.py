@@ -25,7 +25,8 @@ FUMO_GIFS = ["https://chibisafe.crispy-caesus.eu/iZc8VAvsKtsA.gif",
              "https://chibisafe.crispy-caesus.eu/sz7TDwpn495I.gif",
              "https://chibisafe.crispy-caesus.eu/oLNREM7vY9Ss.gif",
              "https://chibisafe.crispy-caesus.eu/4d9m4VpGZUFh.gif",
-             "https://chibisafe.crispy-caesus.eu/Qml4ZaqQTynM.gif"]
+             "https://chibisafe.crispy-caesus.eu/Qml4ZaqQTynM.gif",
+             "https://chibisafe.crispy-caesus.eu/jnCH3bMfahl1.gif"]
 GET_REAL_GIFS = ["https://chibisafe.crispy-caesus.eu/NzOO2JvPcDJI.gif"]
 
 
