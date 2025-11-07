@@ -27,9 +27,9 @@ async def on_ready():
 
     # Set the bot's presence
     activity = discord.Activity(
-        name="your submissions",
+        name="👀 Stalking your submissions",
         type=discord.ActivityType.watching,
-        state="👀 Stalking your submissions"  # Optional: for more detail
+        # state="👀 Stalking your submissions"  # Optional: for more detail
     )
     await bot.change_presence(activity=activity)
     print("Bot presence set!")
