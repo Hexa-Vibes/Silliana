@@ -54,21 +54,15 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
         label='Artist Name',
         placeholder='Enter your name...',
         required=True,
-        max_length=100
+        max_length=300
     )
 
-    song_name = discord.ui.TextInput(
-        label='Song Name',
-        placeholder='Enter your song title...',
+    song_info = discord.ui.TextInput(
+        label='Song Name & Link to song',
+        placeholder='Song Title: [Title]\nLink: [URL]',
+        style=discord.TextStyle.paragraph,
         required=True,
-        max_length=100
-    )
-
-    song_link = discord.ui.TextInput(
-        label='Song Link',
-        placeholder='Enter the link to your song (YouTube, SoundCloud, etc.)...',
-        required=True,
-        max_length=200
+        max_length=300
     )
 
     genre = discord.ui.TextInput(
@@ -86,28 +80,95 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
         required=True,
         max_length=500
     )
+
+    # File upload component wrapped in Label needed for new file upload feature
+    files = discord.ui.Label(
+        text='Song File (Optional)',
+        description='Upload your song here! (max 100MB)',
+        component=discord.ui.FileUpload(
+            custom_id='submission_files',
+            max_values=5,
+            min_values=0,
+            required=False
+        )
+    )
+
 # Handle form submission
     async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
-            embed = self._create_submission_embed(interaction)
-            await self._send_to_submission_channel(interaction, embed)
-            await interaction.response.send_message(SUCCESS_MESSAGE, ephemeral=True)
+            # Get uploaded files from the FileUpload component
+            uploaded_files = self.files.component.values if hasattr(self.files.component, 'values') else []
+            
+            # Validate file sizes (Discord limit: 25MB for non-boosted servers, 50MB for level 2+)
+            # Using conservative 25MB limit
+            MAX_FILE_SIZE = 100000000   # 100MB in bytes
+            MAX_TOTAL_SIZE = 100000000   # Total size limit
+            
+            if uploaded_files:
+                total_size = sum(file.size for file in uploaded_files)
+                oversized_files = [file for file in uploaded_files if file.size > MAX_FILE_SIZE]
+                
+                if oversized_files:
+                    file_list = "\n".join([f"• {file.filename} ({file.size / (1024*1024):.1f}MB)" for file in oversized_files])
+                    await interaction.response.send_message(
+                        f"**Files too large!**\n\nThe following files exceed the 100MB limit:\n{file_list}\n\nPlease upload smaller files or use external links.",
+                        ephemeral=True
+                    )
+                    return
+                
+                if total_size > MAX_TOTAL_SIZE:
+                    await interaction.response.send_message(
+                        f"**Total file size too large!**\n\nTotal: {total_size / (1024*1024):.1f}MB (limit: 100MB)\n\nPlease reduce the number or size of files.",
+                        ephemeral=True
+                    )
+                    return
+            
+            # Acknowledge the interaction first to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
+            embed = self._create_submission_embed(interaction, uploaded_files)
+            await self._send_to_submission_channel(interaction, embed, uploaded_files)
+            await interaction.followup.send(SUCCESS_MESSAGE, ephemeral=True)
         except Exception as e:
             await self.on_error(interaction, e)
 # Create the submission embed
-    def _create_submission_embed(self, interaction: discord.Interaction) -> discord.Embed:
+    def _create_submission_embed(self, interaction: discord.Interaction, uploaded_files: list) -> discord.Embed:
         embed = discord.Embed(
-            title="📝 New Form Submission",
+            title="New Form Submission",
             color=SUBMISSION_EMBED_COLOR,
             timestamp=interaction.created_at
         )
 
+        # Parse song info (combined field)
+        song_info_text = self.song_info.value
+        # Try to extract song name and link
+        lines = song_info_text.split('\n')
+        song_name = "Not specified"
+        song_link = "Not specified"
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            if line_lower.startswith('song') or line_lower.startswith('title'):
+                song_name = line.split(':', 1)[1].strip() if ':' in line else line
+            elif line_lower.startswith('link') or line_lower.startswith('url') or 'http' in line_lower:
+                song_link = line.split(':', 1)[1].strip() if ':' in line else line
+        
+        # If parsing failed, use the whole text as song name
+        if song_name == "Not specified" and song_link == "Not specified":
+            song_name = song_info_text[:100] if len(song_info_text) > 100 else song_info_text
+            song_link = "See song info"
+
 # Add form fields to embed
         embed.add_field(name="Artist", value=self.artist_name.value, inline=True)
-        embed.add_field(name="Song", value=self.song_name.value, inline=True)
-        embed.add_field(name="Link", value=self.song_link.value, inline=False)
+        embed.add_field(name="Song", value=song_name, inline=True)
+        embed.add_field(name="Link", value=song_link, inline=False)
         embed.add_field(name="Genre", value=self.genre.value, inline=False)
         embed.add_field(name="Socials", value=self.socials.value, inline=False)
+        
+        # Add file attachment info if files were uploaded
+        if uploaded_files:
+            file_names = "\n".join([f"• {file.filename}" for file in uploaded_files])
+            embed.add_field(name="Attachments", value=file_names, inline=False)
 
 # Set footer with submitter info
         avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
@@ -118,7 +179,7 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
 
         return embed
 # Send the submission embed to the configured submission channel.
-    async def _send_to_submission_channel(self, interaction: discord.Interaction, embed: discord.Embed) -> None:
+    async def _send_to_submission_channel(self, interaction: discord.Interaction, embed: discord.Embed, uploaded_files: list) -> None:
         submission_channel_id = os.getenv("SUBMISSION_CHANNELID")
         if not submission_channel_id:
             return
@@ -128,20 +189,26 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
             if channel:
                 # Create review buttons with the submitter's ID
                 review_buttons = SubmissionReviewButtons(interaction.user.id)
-                await channel.send(embed=embed, view=review_buttons)
+                
+                # Convert attachments to File objects for sending
+                files = []
+                if uploaded_files:
+                    for attachment in uploaded_files:
+                        file = await attachment.to_file()
+                        files.append(file)
+                
+                # Send with files if any were uploaded
+                if files:
+                    await channel.send(embed=embed, view=review_buttons, files=files)
+                else:
+                    await channel.send(embed=embed, view=review_buttons)
         except (ValueError, AttributeError) as e:
             print(f"Error sending to submission channel: {e}")
 # Handle errors during form submission
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         print(f"Form submission error: {error}")
 
-        try:
-            if not interaction.response.is_done():
-                await interaction.response.send_message(ERROR_MESSAGE, ephemeral=True)
-            else:
-                await interaction.followup.send(ERROR_MESSAGE, ephemeral=True)
-        except Exception as e:
-            print(f"Error sending error message: {e}")
+
 
 #====================
 # UI BUTTONS
@@ -267,11 +334,24 @@ class SubmissionReviewButtons(discord.ui.View):
                     accepted_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     accepted_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
                     
+                    # Copy file attachments info if present (check if there's an Attachments field)
+                    if len(embed.fields) > 5 and embed.fields[5].name == "Attachments":
+                        accepted_embed.add_field(name="Attachments", value=embed.fields[5].value, inline=False)
 
                     posted_view = PostedButton()
                     
+                    # Get attachments from the original message and convert to Files
+                    files = []
+                    if interaction.message.attachments:
+                        for attachment in interaction.message.attachments:
+                            file = await attachment.to_file()
+                            files.append(file)
 
-                    await accepted_channel.send(embed=accepted_embed, view=posted_view)
+                    # Send with files if any were uploaded
+                    if files:
+                        await accepted_channel.send(embed=accepted_embed, view=posted_view, files=files)
+                    else:
+                        await accepted_channel.send(embed=accepted_embed, view=posted_view)
                     
                     # Send confirmation to reviewer
                     if interaction.response.is_done():
@@ -343,6 +423,10 @@ class SubmissionReviewButtons(discord.ui.View):
                     rejected_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     rejected_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
                     
+                    # Copy file attachments info if present
+                    if len(embed.fields) > 5 and embed.fields[5].name == "Attachments":
+                        rejected_embed.add_field(name="Attachments", value=embed.fields[5].value, inline=False)
+                    
                     # Add rejection reason if provided
                     if rejection_reason:
                         rejected_embed.add_field(
@@ -357,8 +441,18 @@ class SubmissionReviewButtons(discord.ui.View):
                         icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                     )
                     
-                    # Send to the rejected channel
-                    await rejected_channel.send(embed=rejected_embed)
+                    # Get attachments from the original message and convert to Files
+                    files = []
+                    if interaction.message.attachments:
+                        for attachment in interaction.message.attachments:
+                            file = await attachment.to_file()
+                            files.append(file)
+                    
+                    # Send to the rejected channel with files if any
+                    if files:
+                        await rejected_channel.send(embed=rejected_embed, files=files)
+                    else:
+                        await rejected_channel.send(embed=rejected_embed)
                     
                     
                     if interaction.response.is_done():
@@ -430,14 +524,27 @@ class SubmissionReviewButtons(discord.ui.View):
                     held_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     held_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
                     
+                    # Copy file attachments info if present
+                    if len(embed.fields) > 5 and embed.fields[5].name == "Attachments":
+                        held_embed.add_field(name="Attachments", value=embed.fields[5].value, inline=False)
 
                     held_embed.set_footer(
                         text=f"Held by: {interaction.user.display_name}",
                         icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                     )
                     
+                    # Get attachments from the original message and convert to Files
+                    files = []
+                    if interaction.message.attachments:
+                        for attachment in interaction.message.attachments:
+                            file = await attachment.to_file()
+                            files.append(file)
                     
-                    await held_channel.send(embed=held_embed)
+                    # Send with files if any were uploaded
+                    if files:
+                        await held_channel.send(embed=held_embed, files=files)
+                    else:
+                        await held_channel.send(embed=held_embed)
                     
                     
                     if interaction.response.is_done():
@@ -576,7 +683,7 @@ class Forms(commands.Cog):
 
         await target_channel.send(embed=embed, view=view)
         await interaction.response.send_message(
-            f"✅ Submission form sent to {target_channel.mention}!", 
+            f"Submission form sent to {target_channel.mention}!", 
             ephemeral=True
         )
 
