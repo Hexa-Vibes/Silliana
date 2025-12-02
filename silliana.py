@@ -5,11 +5,14 @@ import discord
 import os
 from discord.ext import commands
 from dotenv import load_dotenv
+from logger import Logger
 
 INTENTS = discord.Intents.default()
 INTENTS.message_content = True
 INTENTS.guilds = True
 INTENTS.guild_messages = True
+
+log = Logger("SILLIANA")
 
 load_dotenv()
 
@@ -23,7 +26,7 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-    print("Silliana is logged in!")
+    log.info("Silliana is logged in!")
 
     # Set the bot's presence
     activity = discord.Activity(
@@ -32,7 +35,7 @@ async def on_ready():
         # state="👀 Stalking your submissions"  # Optional: for more detail
     )
     await bot.change_presence(activity=activity)
-    print("Bot presence set!")
+    log.info("Bot presence set!")
 
     # Add persistent views
     from cogs.forms import SubmissionButton
@@ -41,9 +44,9 @@ async def on_ready():
     # Sync slash commands automatically
     try:
         synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
+        log.info(f"Synced {len(synced)} command(s)")
     except Exception as e:
-        print(f"Failed to sync commands: {e}")
+        log.error(f"Failed to sync commands: {e}")
 
 async def main():
     await bot.load_extension("cogs.reacts")

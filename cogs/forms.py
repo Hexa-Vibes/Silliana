@@ -5,6 +5,9 @@ import os
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
+from logger import Logger
+
+log = Logger("FORMS")
 
 #====================
 # CONSTANTS
@@ -130,10 +133,10 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
                 review_buttons = SubmissionReviewButtons(interaction.user.id)
                 await channel.send(embed=embed, view=review_buttons)
         except (ValueError, AttributeError) as e:
-            print(f"Error sending to submission channel: {e}")
+            log.error(f"Error sending to submission channel: {e}")
 # Handle errors during form submission
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        print(f"Form submission error: {error}")
+        log.error(f"Form submission error: {error}")
 
         try:
             if not interaction.response.is_done():
@@ -395,7 +398,7 @@ class SubmissionReviewButtons(discord.ui.View):
                     await interaction.message.edit(embed=embed, view=self)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
-                print(f"Error moving rejected submission: {e}")
+                log.error(f"Error moving rejected submission: {e}")
                 if not response_sent:
                     if interaction.response.is_done():
                         await interaction.followup.send(
@@ -474,7 +477,7 @@ class SubmissionReviewButtons(discord.ui.View):
                     await interaction.message.edit(embed=embed, view=self)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
-                print(f"Error moving held submission: {e}")
+                log.error(f"Error moving held submission: {e}")
                 if not response_sent:
                     if interaction.response.is_done():
                         await interaction.followup.send(
@@ -541,7 +544,7 @@ class SubmissionReviewButtons(discord.ui.View):
         except discord.Forbidden:
             await interaction.followup.send("Could not send DM to the submitter (DMs closed or blocked).", ephemeral=True)
         except Exception as e:
-            print(f"Error notifying submitter: {e}")
+            log.error(f"Error notifying submitter: {e}")
             await interaction.followup.send("Error notifying the submitter.", ephemeral=True)
 
 #====================

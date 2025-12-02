@@ -6,7 +6,9 @@ import requests
 from discord import app_commands
 from discord.ext import commands, tasks
 from typing import Optional, Dict, Any
+from logger import Logger
 
+log = Logger("TWITCH")
 class TwitchNotifications(commands.Cog):
     """
     A cog that monitors Twitch streams and sends Discord notifications when the streamer goes live.
@@ -24,7 +26,7 @@ class TwitchNotifications(commands.Cog):
         try:
             self.notification_channel_id = int(os.getenv("TWITCH_NOTIFICATION_CHANNELID", "0"))
         except ValueError:
-            print("Error: Invalid channel ID in environment variables")
+            log.error("Invalid channel ID in environment variables")
             self.notification_channel_id = 0
 
         # API related attributes
@@ -36,7 +38,7 @@ class TwitchNotifications(commands.Cog):
 
         # Validate configuration
         if not self._validate_config():
-            print("Error: Invalid configuration. Stream monitoring will not start.")
+            log.error("Invalid configuration. Stream monitoring will not start.")
             return
 
         # Start the background task
@@ -46,11 +48,11 @@ class TwitchNotifications(commands.Cog):
         """Validates the configuration and returns True if valid."""
         required_vars = [self.client_id, self.client_secret, self.username]
         if not all(required_vars):
-            print("Error: Missing required Twitch API credentials")
+            log.error("Missing required Twitch API credentials")
             return False
 
         if self.notification_channel_id == 0:
-            print("Error: Invalid notification channel ID")
+            log.error("Invalid notification channel ID")
             return False
 
         return True
@@ -79,11 +81,11 @@ class TwitchNotifications(commands.Cog):
                 "Authorization": f"Bearer {self.access_token}"
             }
 
-            print("Successfully obtained Twitch access token")
+            log.info("Successfully obtained Twitch access token")
             return True
 
         except requests.exceptions.RequestException as e:
-            print(f"Error obtaining Twitch access token: {e}")
+            log.error(f"Error obtaining Twitch access token: {e}")
             self.access_token = None
             self.headers = {}
             return False
@@ -104,7 +106,7 @@ class TwitchNotifications(commands.Cog):
 
             # Handle token expiration
             if response.status_code == 401:
-                print("Twitch access token expired. Refreshing...")
+                log.warn("Twitch access token expired. Refreshing...")
                 if self._get_access_token():
                     response = requests.get(
                         f"https://api.twitch.tv/helix/streams?user_login={self.username}",
@@ -118,7 +120,7 @@ class TwitchNotifications(commands.Cog):
             return response.json()
 
         except requests.exceptions.RequestException as e:
-            print(f"Error making Twitch API request: {e}")
+            log.error(f"Error making Twitch API request: {e}")
             return None
 
     @tasks.loop(minutes=1)
@@ -145,7 +147,7 @@ class TwitchNotifications(commands.Cog):
         else:
             # Stream is OFFLINE
             if self.is_live:
-                print(f"{self.username} has gone offline")
+                log.info(f"{self.username} has gone offline")
                 self.is_live = False
 
     async def _send_live_notification(self, stream_info: Dict[str, Any]):
@@ -157,7 +159,7 @@ class TwitchNotifications(commands.Cog):
         """
         channel = self.bot.get_channel(self.notification_channel_id)
         if not channel:
-            print(f"Error: Notification channel with ID {self.notification_channel_id} not found")
+            log.error(f"Notification channel with ID {self.notification_channel_id} not found")
             return
 
         print(f"{self.username} is live! Sending notification...")

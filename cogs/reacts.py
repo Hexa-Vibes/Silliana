@@ -5,6 +5,9 @@ from discord.ext import commands
 from time import time
 from os import getenv
 from random import choice
+from logger import Logger
+
+log = Logger("REACTS")
 
 BWAA_STICKERIDS = getenv("BWAA_STICKERIDS").split(",")
 MEOW_STICKERIDS = getenv("MEOW_STICKERIDS").split(",")
@@ -22,10 +25,10 @@ class MessageReacts(commands.Cog):
         try:
             await message.reply(stickers=[await message.guild.fetch_sticker(sticker_id)])
         except discord.Forbidden:
-            print(f"Not allowed to reply (Message ID: {message.id})")
+            log.error(f"Not allowed to reply (Message ID: {message.id})")
             return
         except discord.HTTPException as e:
-            print(
+            log.error(
                 f"HTTP Exception when replying (Message ID: {message.id}\n   {e}")
             return
         self.message_ts = time()
@@ -34,10 +37,10 @@ class MessageReacts(commands.Cog):
         try:
             await message.reply(text)
         except discord.Forbidden:
-            print(f"Not allowed to reply (Message ID: {message.id})")
+            log.error(f"Not allowed to reply (Message ID: {message.id})")
             return
         except discord.HTTPException as e:
-            print(
+            log.error(
                 f"HTTP Exception when replying (Message ID: {message.id}\n   {e}")
             return
         self.message_ts = time()
