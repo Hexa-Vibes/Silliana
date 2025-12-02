@@ -32,6 +32,4 @@ $ python3 silliana.py
 ```
 
 ### Contribution
-crispy-caesus
-SenkoNyan
-herrlayre
+Guidelines TBD
