@@ -27,8 +27,9 @@ ERROR_MESSAGE = "An error occurred while submitting your form."
 class RejectionReasonModal(discord.ui.Modal, title='Rejection Reason'):
     def __init__(self, original_view, message):
         super().__init__()
-        self.original_view = original_view
+        self.original_view: discord.Message = original_view
         self.message = message
+        log.info(f'Rejection modal {self.id} on {self.original_view.id} initiated.')
 
     rejection_reason = discord.ui.TextInput(
         label='Why are you rejecting this submission?',
@@ -39,6 +40,8 @@ class RejectionReasonModal(discord.ui.Modal, title='Rejection Reason'):
     )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        log.info(f'Sending rejection {self.id} on {self.original_view.id}...')
+
         await self.original_view.handle_review(
             interaction, 
             "denied", 
@@ -51,6 +54,7 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
 
     def __init__(self):
         super().__init__()
+        log.info(f'Submission modal {self.id} initiated!')
 
     # Form fields
     artist_name = discord.ui.TextInput(
@@ -92,6 +96,7 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
 # Handle form submission
     async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
+            log.info(f'Sending submission {self.id}...')
             embed = self._create_submission_embed(interaction)
             await self._send_to_submission_channel(interaction, embed)
             await interaction.response.send_message(SUCCESS_MESSAGE, ephemeral=True)
@@ -160,18 +165,14 @@ class PostedButton(discord.ui.View):
         custom_id='mark_as_posted',
     )
     async def mark_posted(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        
         embed = interaction.message.embeds[0]
-        
-        
+
         if not embed.title.startswith("**POSTED**"):
             embed.title = f"**POSTED** - {embed.title}"
-            
-        
+
         button.disabled = True
         button.label = "Posted"
-        
-        
+
         await interaction.response.edit_message(embed=embed, view=self)
         await interaction.followup.send("Track marked as posted.", ephemeral=True)
 
@@ -216,7 +217,6 @@ class SubmissionReviewButtons(discord.ui.View):
         custom_id='deny_submission',
     )
     async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        
         modal = RejectionReasonModal(self, interaction.message)
         await interaction.response.send_modal(modal)
 
@@ -233,49 +233,42 @@ class SubmissionReviewButtons(discord.ui.View):
         embed = interaction.message.embeds[0]
         embed.color = color
         embed.title = f"📝 Submission {status.capitalize()}"
-        
-        
+
         status_value = f"{status.capitalize()} by {interaction.user.mention}"
         if rejection_reason and status == "denied":
             status_value += f"\nReason: {rejection_reason}"
-            
+
         embed.add_field(
             name="Review Status",
             value=status_value,
             inline=False
         )
-        
-        
+
         for item in self.children:
             item.disabled = True
-        
+
         response_sent = False
-        
+
         # Handle accepted submissions
         if status == "accepted" and self.accepted_channel_id:
             try:
-                
                 accepted_channel = await interaction.client.fetch_channel(int(self.accepted_channel_id))
                 if accepted_channel:
-                    
                     accepted_embed = discord.Embed(
                         title=f"Accepted Track: {embed.fields[1].value}",  # Song name
                         description=f"By {embed.fields[0].value}",  # Artist name
                         color=ACCEPTED_COLOR,
                         timestamp=discord.utils.utcnow()
                     )
-                    
-                    
+
                     accepted_embed.add_field(name="Link", value=embed.fields[2].value, inline=False)  # Song link
                     accepted_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     accepted_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
-                    
 
                     posted_view = PostedButton()
-                    
 
                     await accepted_channel.send(embed=accepted_embed, view=posted_view)
-                    
+
                     # Send confirmation to reviewer
                     if interaction.response.is_done():
                         await interaction.followup.send(
@@ -288,10 +281,10 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                    
+
                     # Delete the original message
                     await interaction.message.delete()
-                    
+
                 else:
                     # Send error message if the channel couldn't be found
                     if not response_sent:
@@ -306,10 +299,10 @@ class SubmissionReviewButtons(discord.ui.View):
                                 ephemeral=True
                             )
                             response_sent = True
-                            
+
 
                     await interaction.message.edit(embed=embed, view=self)
-                    
+
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 print(f"Error moving accepted submission: {e}")
                 if not response_sent:
@@ -324,10 +317,9 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                        
-                
+
                 await interaction.message.edit(embed=embed, view=self)
-        
+
         elif status == "denied" and self.rejected_channel_id:
             try:
                 # Get the rejected channel
@@ -340,12 +332,12 @@ class SubmissionReviewButtons(discord.ui.View):
                         color=DENIED_COLOR,
                         timestamp=discord.utils.utcnow()
                     )
-                    
+
                     # Copy relevant fields
                     rejected_embed.add_field(name="Link", value=embed.fields[2].value, inline=False)  # Song link
                     rejected_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     rejected_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
-                    
+
                     # Add rejection reason if provided
                     if rejection_reason:
                         rejected_embed.add_field(
@@ -353,17 +345,17 @@ class SubmissionReviewButtons(discord.ui.View):
                             value=rejection_reason,
                             inline=False
                         )
-                    
-                    
+
+
                     rejected_embed.set_footer(
                         text=f"Rejected by: {interaction.user.display_name}",
                         icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                     )
-                    
+
                     # Send to the rejected channel
                     await rejected_channel.send(embed=rejected_embed)
-                    
-                    
+
+
                     if interaction.response.is_done():
                         await interaction.followup.send(
                             f"Submission rejected and moved to <#{self.rejected_channel_id}>. Original message will be deleted.", 
@@ -375,12 +367,11 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                    
+
 
                     await interaction.message.delete()
-                    
+
                 else:
-                    
                     if not response_sent:
                         if interaction.response.is_done():
                             await interaction.followup.send(
@@ -393,10 +384,10 @@ class SubmissionReviewButtons(discord.ui.View):
                                 ephemeral=True
                             )
                             response_sent = True
-                            
+
 
                     await interaction.message.edit(embed=embed, view=self)
-                    
+
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 log.error(f"Error moving rejected submission: {e}")
                 if not response_sent:
@@ -411,13 +402,12 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                        
-                
+
                 await interaction.message.edit(embed=embed, view=self)
         # Handle held for questions submissions
         elif status == "held for questions" and self.held_channel_id:
             try:
-                
+
                 held_channel = await interaction.client.fetch_channel(int(self.held_channel_id))
                 if held_channel:
                     # Create a new embed for the held channel
@@ -427,22 +417,20 @@ class SubmissionReviewButtons(discord.ui.View):
                         color=HOLD_COLOR,
                         timestamp=discord.utils.utcnow()
                     )
-                    
+
                     # Copy relevant fields
                     held_embed.add_field(name="Link", value=embed.fields[2].value, inline=False)  # Song link
                     held_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     held_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
-                    
+
 
                     held_embed.set_footer(
                         text=f"Held by: {interaction.user.display_name}",
                         icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                     )
-                    
-                    
+
                     await held_channel.send(embed=held_embed)
-                    
-                    
+
                     if interaction.response.is_done():
                         await interaction.followup.send(
                             f"Submission held for questions and moved to <#{self.held_channel_id}>. Original message will be deleted.", 
@@ -454,12 +442,12 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                    
+
                     # Delete the original message
                     await interaction.message.delete()
-                    
+
                 else:
-                    
+
                     if not response_sent:
                         if interaction.response.is_done():
                             await interaction.followup.send(
@@ -472,10 +460,9 @@ class SubmissionReviewButtons(discord.ui.View):
                                 ephemeral=True
                             )
                             response_sent = True
-                            
 
                     await interaction.message.edit(embed=embed, view=self)
-                    
+
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 log.error(f"Error moving held submission: {e}")
                 if not response_sent:
@@ -490,8 +477,7 @@ class SubmissionReviewButtons(discord.ui.View):
                             ephemeral=True
                         )
                         response_sent = True
-                        
-                
+
                 await interaction.message.edit(embed=embed, view=self)
         else:
             # For submissions or if channel isn't set, just update the message
@@ -503,26 +489,24 @@ class SubmissionReviewButtons(discord.ui.View):
             else:
                 await interaction.response.edit_message(embed=embed, view=self)
                 await interaction.followup.send(f"Submission has been marked as {status}.", ephemeral=True)
-        
-        
+
         try:
             submitter = await interaction.client.fetch_user(self.submitter_id)
             if submitter:
-                
+
                 notification_embed = discord.Embed(
                     title=f"Your Submission Status: {status.capitalize()}",
                     color=color,
                     timestamp=discord.utils.utcnow()
                 )
-                
-                
+
                 if status == "held for questions":
                     notification_embed.description = "Please contact Hexa Vibes in DMs for more information about your submission."
                 elif status == "denied" and rejection_reason:
                     notification_embed.description = f"**Reason for rejection:**\n{rejection_reason}"
                 elif status == "accepted":
                     notification_embed.description = "Congratulations! Your submission has been accepted."
-                
+
                 # Copy relevant information from the original embed
                 for field in embed.fields[:5]:  
                     notification_embed.add_field(
@@ -530,13 +514,12 @@ class SubmissionReviewButtons(discord.ui.View):
                         value=field.value,
                         inline=field.inline
                     )
-                
-                
+
                 notification_embed.set_footer(
                     text=f"Reviewed by: {interaction.user.display_name}",
                     icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                 )
-                
+
                 await submitter.send(embed=notification_embed)
                 await interaction.followup.send(f"Notification sent to the submitter.", ephemeral=True)
             else:
