@@ -2,6 +2,7 @@
 
 import discord
 import os
+import re
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
@@ -129,8 +130,8 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
         try:
             channel = interaction.guild.get_channel(int(submission_channel_id))
             if channel:
-                # Create review buttons with the submitter's ID
-                review_buttons = SubmissionReviewButtons(interaction.user.id)
+                # Create review buttons for the submission message
+                review_buttons = SubmissionReviewButtons()
                 await channel.send(embed=embed, view=review_buttons)
         except (ValueError, AttributeError) as e:
             log.error(f"Error sending to submission channel: {e}")
@@ -194,13 +195,27 @@ class SubmissionButton(discord.ui.View):
 
 # Review buttons for submission management
 class SubmissionReviewButtons(discord.ui.View):
-    def __init__(self, submitter_id: int):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.submitter_id = submitter_id
         # Get the channel IDs from environment variables
         self.accepted_channel_id = os.getenv("ACCEPTED_CHANNELID")
         self.rejected_channel_id = os.getenv("REJECTED_CHANNELID")
         self.held_channel_id = os.getenv("HELD_CHANNELID")
+
+    @staticmethod
+    def _extract_submitter_id(embed: discord.Embed) -> Optional[int]:
+        footer_text = embed.footer.text if embed.footer else ""
+        if not footer_text:
+            return None
+
+        match = re.search(r"\(ID:\s*(\d+)\)", footer_text)
+        if not match:
+            return None
+
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
 
     @discord.ui.button(
         label='Accept',
@@ -308,7 +323,7 @@ class SubmissionReviewButtons(discord.ui.View):
                             response_sent = True
                             
 
-                    await interaction.message.edit(embed=embed, view=self)
+                    await interaction.message.edit(embed=embed, view=None)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 print(f"Error moving accepted submission: {e}")
@@ -326,7 +341,7 @@ class SubmissionReviewButtons(discord.ui.View):
                         response_sent = True
                         
                 
-                await interaction.message.edit(embed=embed, view=self)
+                await interaction.message.edit(embed=embed, view=None)
         
         elif status == "denied" and self.rejected_channel_id:
             try:
@@ -395,7 +410,7 @@ class SubmissionReviewButtons(discord.ui.View):
                             response_sent = True
                             
 
-                    await interaction.message.edit(embed=embed, view=self)
+                    await interaction.message.edit(embed=embed, view=None)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 log.error(f"Error moving rejected submission: {e}")
@@ -413,7 +428,7 @@ class SubmissionReviewButtons(discord.ui.View):
                         response_sent = True
                         
                 
-                await interaction.message.edit(embed=embed, view=self)
+                await interaction.message.edit(embed=embed, view=None)
         # Handle held for questions submissions
         elif status == "held for questions" and self.held_channel_id:
             try:
@@ -474,7 +489,7 @@ class SubmissionReviewButtons(discord.ui.View):
                             response_sent = True
                             
 
-                    await interaction.message.edit(embed=embed, view=self)
+                    await interaction.message.edit(embed=embed, view=None)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
                 log.error(f"Error moving held submission: {e}")
@@ -492,21 +507,26 @@ class SubmissionReviewButtons(discord.ui.View):
                         response_sent = True
                         
                 
-                await interaction.message.edit(embed=embed, view=self)
+                await interaction.message.edit(embed=embed, view=None)
         else:
             # For submissions or if channel isn't set, just update the message
             # If this is called from the modal, interaction.response is already used
             if interaction.response.is_done():
-                await interaction.message.edit(embed=embed, view=self)
+                await interaction.message.edit(embed=embed, view=None)
                 if not response_sent:
                     await interaction.followup.send(f"Submission has been marked as {status}.", ephemeral=True)
             else:
-                await interaction.response.edit_message(embed=embed, view=self)
+                await interaction.response.edit_message(embed=embed, view=None)
                 await interaction.followup.send(f"Submission has been marked as {status}.", ephemeral=True)
         
         
         try:
-            submitter = await interaction.client.fetch_user(self.submitter_id)
+            submitter_id = self._extract_submitter_id(embed)
+            if not submitter_id:
+                await interaction.followup.send("Could not determine the submitter to notify.", ephemeral=True)
+                return
+
+            submitter = await interaction.client.fetch_user(submitter_id)
             if submitter:
                 
                 notification_embed = discord.Embed(
@@ -538,7 +558,7 @@ class SubmissionReviewButtons(discord.ui.View):
                 )
                 
                 await submitter.send(embed=notification_embed)
-                await interaction.followup.send(f"Notification sent to the submitter.", ephemeral=True)
+                await interaction.followup.send("Notification sent to the submitter.", ephemeral=True)
             else:
                 await interaction.followup.send("Could not find the submitter to notify.", ephemeral=True)
         except discord.Forbidden:
