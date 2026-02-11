@@ -193,6 +193,274 @@ class SubmissionButton(discord.ui.View):
     async def submit_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await interaction.response.send_modal(SubmissionForm())
 
+# Review buttons for held submissions
+class HeldReviewButtons(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        # Get the channel IDs from environment variables
+        self.accepted_channel_id = os.getenv("ACCEPTED_CHANNELID")
+        self.rejected_channel_id = os.getenv("REJECTED_CHANNELID")
+
+    @staticmethod
+    def _extract_submitter_id(embed: discord.Embed) -> Optional[int]:
+        footer_text = embed.footer.text if embed.footer else ""
+        if not footer_text:
+            return None
+
+        match = re.search(r"\(ID:\s*(\d+)\)", footer_text)
+        if not match:
+            return None
+
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _extract_song_and_artist_from_held_embed(embed: discord.Embed) -> tuple:
+        """Extract song name and artist from held embed title/description"""
+        song_name = embed.title.replace("Held Track: ", "").strip() if embed.title else "Unknown"
+        artist_name = embed.description.replace("By ", "").strip() if embed.description else "Unknown"
+        return song_name, artist_name
+
+    @discord.ui.button(
+        label='Approve',
+        style=discord.ButtonStyle.success,
+        custom_id='approve_held_submission',
+    )
+    async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self.handle_held_review(interaction, "accepted", ACCEPTED_COLOR)
+
+    @discord.ui.button(
+        label='Deny',
+        style=discord.ButtonStyle.danger,
+        custom_id='deny_held_submission',
+    )
+    async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        modal = RejectionReasonModal(self, interaction.message)
+        await interaction.response.send_modal(modal)
+
+    async def handle_review(self, interaction: discord.Interaction, status: str, color: int, rejection_reason: str = None) -> None:
+        """Handle review for held submissions (called by RejectionReasonModal)"""
+        await self.handle_held_review(interaction, status, color, rejection_reason)
+
+    async def handle_held_review(self, interaction: discord.Interaction, status: str, color: int, rejection_reason: str = None) -> None:
+        # Update the embed with the review status
+        embed = interaction.message.embeds[0]
+        
+        # Extract song and artist before modifying the embed
+        song_name, artist_name = self._extract_song_and_artist_from_held_embed(embed)
+        
+        embed.color = color
+        embed.title = f"📝 Submission {status.capitalize()}"
+        
+        status_value = f"{status.capitalize()} by {interaction.user.mention}"
+        if rejection_reason and status == "denied":
+            status_value += f"\nReason: {rejection_reason}"
+            
+        embed.add_field(
+            name="Review Status",
+            value=status_value,
+            inline=False
+        )
+        
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+        
+        response_sent = False
+        
+        # Handle accepted held submissions
+        if status == "accepted" and self.accepted_channel_id:
+            try:
+                accepted_channel = await interaction.client.fetch_channel(int(self.accepted_channel_id))
+                if accepted_channel:
+                    # Create a new embed for the accepted channel
+                    accepted_embed = discord.Embed(
+                        title=f"Accepted Track: {song_name}",
+                        description=f"By {artist_name}",
+                        color=ACCEPTED_COLOR,
+                        timestamp=discord.utils.utcnow()
+                    )
+                    
+                    accepted_embed.add_field(name="Link", value=embed.fields[0].value, inline=False)
+                    accepted_embed.add_field(name="Genre", value=embed.fields[1].value, inline=True)
+                    accepted_embed.add_field(name="Socials", value=embed.fields[2].value, inline=True)
+                    
+                    posted_view = PostedButton()
+                    await accepted_channel.send(embed=accepted_embed, view=posted_view)
+                    
+                    if interaction.response.is_done():
+                        await interaction.followup.send(
+                            f"Submission approved and moved to <#{self.accepted_channel_id}>. Original message will be deleted.", 
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            f"Submission approved and moved to <#{self.accepted_channel_id}>. Original message will be deleted.", 
+                            ephemeral=True
+                        )
+                        response_sent = True
+                    
+                    await interaction.message.delete()
+                    
+                else:
+                    if not response_sent:
+                        if interaction.response.is_done():
+                            await interaction.followup.send(
+                                "Could not find the accepted submissions channel. The submission has been marked as accepted, but was not moved.",
+                                ephemeral=True
+                            )
+                        else:
+                            await interaction.response.send_message(
+                                "Could not find the accepted submissions channel. The submission has been marked as accepted, but was not moved.",
+                                ephemeral=True
+                            )
+                            response_sent = True
+                    
+                    await interaction.message.edit(embed=embed, view=None)
+                    
+            except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
+                log.error(f"Error moving held submission to accepted: {e}")
+                if not response_sent:
+                    if interaction.response.is_done():
+                        await interaction.followup.send(
+                            "An error occurred while moving the submission. The submission has been marked as accepted, but was not moved.",
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            "An error occurred while moving the submission. The submission has been marked as accepted, but was not moved.",
+                            ephemeral=True
+                        )
+                        response_sent = True
+                
+                await interaction.message.edit(embed=embed, view=None)
+        
+        # Handle denied held submissions
+        elif status == "denied" and self.rejected_channel_id:
+            try:
+                rejected_channel = await interaction.client.fetch_channel(int(self.rejected_channel_id))
+                if rejected_channel:
+                    rejected_embed = discord.Embed(
+                        title=f"Rejected Track: {song_name}",
+                        description=f"By {artist_name}",
+                        color=DENIED_COLOR,
+                        timestamp=discord.utils.utcnow()
+                    )
+                    
+                    rejected_embed.add_field(name="Link", value=embed.fields[0].value, inline=False)
+                    rejected_embed.add_field(name="Genre", value=embed.fields[1].value, inline=True)
+                    rejected_embed.add_field(name="Socials", value=embed.fields[2].value, inline=True)
+                    
+                    if rejection_reason:
+                        rejected_embed.add_field(
+                            name="Rejection Reason",
+                            value=rejection_reason,
+                            inline=False
+                        )
+                    
+                  
+                    
+                    
+                    await rejected_channel.send(embed=rejected_embed)
+                    
+                    if interaction.response.is_done():
+                        await interaction.followup.send(
+                            f"Submission rejected and moved to <#{self.rejected_channel_id}>. Original message will be deleted.", 
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            f"Submission rejected and moved to <#{self.rejected_channel_id}>. Original message will be deleted.", 
+                            ephemeral=True
+                        )
+                        response_sent = True
+                    
+                    await interaction.message.delete()
+                    
+                else:
+                    if not response_sent:
+                        if interaction.response.is_done():
+                            await interaction.followup.send(
+                                "Could not find the rejected submissions channel. The submission has been marked as rejected, but was not moved.",
+                                ephemeral=True
+                            )
+                        else:
+                            await interaction.response.send_message(
+                                "Could not find the rejected submissions channel. The submission has been marked as rejected, but was not moved.",
+                                ephemeral=True
+                            )
+                            response_sent = True
+                    
+                    await interaction.message.edit(embed=embed, view=None)
+                    
+            except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
+                log.error(f"Error moving held submission to rejected: {e}")
+                if not response_sent:
+                    if interaction.response.is_done():
+                        await interaction.followup.send(
+                            "An error occurred while moving the submission. The submission has been marked as rejected, but was not moved.",
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            "An error occurred while moving the submission. The submission has been marked as rejected, but was not moved.",
+                            ephemeral=True
+                        )
+                        response_sent = True
+                
+                await interaction.message.edit(embed=embed, view=None)
+        else:
+            # Just update the message if channel isn't set
+            if interaction.response.is_done():
+                await interaction.message.edit(embed=embed, view=None)
+                if not response_sent:
+                    await interaction.followup.send(f"Submission has been marked as {status}.", ephemeral=True)
+            else:
+                await interaction.response.edit_message(embed=embed, view=None)
+                await interaction.followup.send(f"Submission has been marked as {status}.", ephemeral=True)
+        
+        # Notify the submitter
+        try:
+            submitter_id = self._extract_submitter_id(embed)
+            if not submitter_id:
+                await interaction.followup.send("Could not determine the submitter to notify.", ephemeral=True)
+                return
+
+            submitter = await interaction.client.fetch_user(submitter_id)
+            if submitter:
+                notification_embed = discord.Embed(
+                    title=f"Your Submission Status: {status.capitalize()}",
+                    color=color,
+                    timestamp=discord.utils.utcnow()
+                )
+                
+                if status == "denied" and rejection_reason:
+                    notification_embed.description = f"**Reason for rejection:**\n{rejection_reason}"
+                elif status == "accepted":
+                    notification_embed.description = "Congratulations! Your submission has been accepted."
+                
+                for field in embed.fields:
+                    # Skip the "Review Status" field
+                    if field.name == "Review Status":
+                        continue
+                    notification_embed.add_field(
+                        name=field.name,
+                        value=field.value,
+                        inline=field.inline
+                    )
+                
+                await submitter.send(embed=notification_embed)
+                await interaction.followup.send("Notification sent to the submitter.", ephemeral=True)
+            else:
+                await interaction.followup.send("Could not find the submitter to notify.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.followup.send("Could not send DM to the submitter (DMs closed or blocked).", ephemeral=True)
+        except Exception as e:
+            log.error(f"Error notifying submitter: {e}")
+            await interaction.followup.send("Error notifying the submitter.", ephemeral=True)
+
 # Review buttons for submission management
 class SubmissionReviewButtons(discord.ui.View):
     def __init__(self):
@@ -448,14 +716,19 @@ class SubmissionReviewButtons(discord.ui.View):
                     held_embed.add_field(name="Genre", value=embed.fields[3].value, inline=True)  # Genre
                     held_embed.add_field(name="Socials", value=embed.fields[4].value, inline=True)  # Socials
                     
-
+                    # Preserve submitter ID in footer
+                    original_footer = embed.footer.text if embed.footer else ""
+                    submitter_id_match = re.search(r"\(ID:\s*(\d+)\)", original_footer)
+                    submitter_id = f" {submitter_id_match.group(0)}" if submitter_id_match else ""
+                    
                     held_embed.set_footer(
-                        text=f"Held by: {interaction.user.display_name}",
+                        text=f"Held by: {interaction.user.display_name}{submitter_id}",
                         icon_url=interaction.user.avatar.url if interaction.user.avatar else None
                     )
                     
-                    
-                    await held_channel.send(embed=held_embed)
+                    # Add approve/deny buttons for held submissions
+                    held_view = HeldReviewButtons()
+                    await held_channel.send(embed=held_embed, view=held_view)
                     
                     
                     if interaction.response.is_done():
@@ -544,18 +817,15 @@ class SubmissionReviewButtons(discord.ui.View):
                     notification_embed.description = "Congratulations! Your submission has been accepted."
                 
                 # Copy relevant information from the original embed
-                for field in embed.fields[:5]:  
+                for field in embed.fields:  
+                    # Skip the "Review Status" field
+                    if field.name == "Review Status":
+                        continue
                     notification_embed.add_field(
                         name=field.name,
                         value=field.value,
                         inline=field.inline
                     )
-                
-                
-                notification_embed.set_footer(
-                    text=f"Reviewed by: {interaction.user.display_name}",
-                    icon_url=interaction.user.avatar.url if interaction.user.avatar else None
-                )
                 
                 await submitter.send(embed=notification_embed)
                 await interaction.followup.send("Notification sent to the submitter.", ephemeral=True)
@@ -643,4 +913,6 @@ class Forms(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
     # Add the persistent view for the Posted button
     bot.add_view(PostedButton())
+    # Add the persistent view for the Held Review buttons
+    bot.add_view(HeldReviewButtons())
     await bot.add_cog(Forms(bot))
