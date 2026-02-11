@@ -40,6 +40,9 @@ async def on_ready():
     # Add persistent views
     from cogs.forms import SubmissionButton
     bot.add_view(SubmissionButton())
+    from cogs.forms import SubmissionReviewButtons, PostedButton
+    bot.add_view(SubmissionReviewButtons())
+    bot.add_view(PostedButton())
 
     # Sync slash commands automatically
     try:
