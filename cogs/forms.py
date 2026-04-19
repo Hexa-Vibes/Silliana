@@ -145,7 +145,7 @@ class SubmissionForm(discord.ui.Modal, title='🎵 Music Submission Form'):
             else:
                 await interaction.followup.send(ERROR_MESSAGE, ephemeral=True)
         except Exception as e:
-            print(f"Error sending error message: {e}")
+            log.error(f"Error sending error message: {e}")
 
 #====================
 # UI BUTTONS
@@ -594,7 +594,7 @@ class SubmissionReviewButtons(discord.ui.View):
                     await interaction.message.edit(embed=embed, view=None)
                     
             except (ValueError, AttributeError, discord.NotFound, discord.Forbidden) as e:
-                print(f"Error moving accepted submission: {e}")
+                log.error(f"Error moving accepted submission: {e}")
                 if not response_sent:
                     if interaction.response.is_done():
                         await interaction.followup.send(
