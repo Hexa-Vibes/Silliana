@@ -162,7 +162,7 @@ class TwitchNotifications(commands.Cog):
             log.error(f"Notification channel with ID {self.notification_channel_id} not found")
             return
 
-        print(f"{self.username} is live! Sending notification...")
+        log.info(f"{self.username} is live! Sending notification...")
 
         # Create embed
         embed = self._create_live_embed(stream_info)
