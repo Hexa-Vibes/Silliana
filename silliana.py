@@ -1,10 +1,12 @@
 # (C) 2025 Hexa Vibes. Licensed under the MIT License.
 
 import asyncio
-import discord
 import os
+
+import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
 from logger import Logger
 
 INTENTS = discord.Intents.default()
@@ -19,10 +21,8 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 APPID = os.getenv("APPID")
 
-bot = commands.Bot(
-    command_prefix=None,
-    intents=INTENTS
-)
+bot = commands.Bot(command_prefix=None, intents=INTENTS)
+
 
 @bot.event
 async def on_ready():
@@ -39,8 +39,10 @@ async def on_ready():
 
     # Add persistent views
     from cogs.forms import SubmissionButton
+
     bot.add_view(SubmissionButton())
-    from cogs.forms import SubmissionReviewButtons, PostedButton
+    from cogs.forms import PostedButton, SubmissionReviewButtons
+
     bot.add_view(SubmissionReviewButtons())
     bot.add_view(PostedButton())
 
@@ -51,12 +53,15 @@ async def on_ready():
     except Exception as e:
         log.error(f"Failed to sync commands: {e}")
 
+
 async def main():
     await bot.load_extension("cogs.reacts")
     await bot.load_extension("cogs.forms")
     await bot.load_extension("cogs.twitch_notifications")
+    await bot.load_extension("cogs.tickets")
 
     await bot.start(TOKEN)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,11 +1,12 @@
 # (C) 2025 Hexa Vibes. Licensed under the MIT License.
 
-import discord
 import os
 import re
-from discord.ext import commands
+
+import discord
 from discord import app_commands
-from typing import Optional
+from discord.ext import commands
+
 from logger import Logger
 
 log = Logger("FORMS")
@@ -202,7 +203,7 @@ class HeldReviewButtons(discord.ui.View):
         self.rejected_channel_id = os.getenv("REJECTED_CHANNELID")
 
     @staticmethod
-    def _extract_submitter_id(embed: discord.Embed) -> Optional[int]:
+    def _extract_submitter_id(embed: discord.Embed) -> int | None:
         footer_text = embed.footer.text if embed.footer else ""
         if not footer_text:
             return None
@@ -471,7 +472,7 @@ class SubmissionReviewButtons(discord.ui.View):
         self.held_channel_id = os.getenv("HELD_CHANNELID")
 
     @staticmethod
-    def _extract_submitter_id(embed: discord.Embed) -> Optional[int]:
+    def _extract_submitter_id(embed: discord.Embed) -> int | None:
         footer_text = embed.footer.text if embed.footer else ""
         if not footer_text:
             return None
@@ -850,7 +851,7 @@ class Forms(commands.Cog):
     async def send_submission_form(
         self,
         interaction: discord.Interaction,
-        channel: Optional[discord.TextChannel] = None
+        channel: discord.TextChannel | None = None
     ) -> None:
         # Check if user is the bot owner
         owner_id = os.getenv("OWNER_ID")
