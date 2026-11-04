@@ -1,10 +1,12 @@
 # (C) 2025 Hexa Vibes. Licensed under the MIT License.
 
-import discord
-from discord.ext import commands
-from time import time
 from os import getenv
 from random import choice
+from time import time
+
+import discord
+from discord.ext import commands
+
 from logger import Logger
 
 log = Logger("REACTS")
@@ -18,6 +20,10 @@ GET_REAL_GIFS = getenv("GET_REAL_GIFS").split(",")
 
 class MessageReacts(commands.Cog):
     def __init__(self, bot):
+        if BWAA_STICKERIDS == [""]:
+            log.warn("No bwaa stickers set - exiting")
+            return
+
         self.bot = bot
         self.message_ts = 0
 
