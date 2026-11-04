@@ -17,14 +17,19 @@ Create a ticket with the moderation team, by clicking the button below
 TICKET_CHANNELID = int(getenv("TICKET_CHANNELID"))
 
 
-class TicketButton(discord.ui.View):
+class TicketButtonView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Create ticket", style=discord.ButtonStyle.primary)
-    async def createTicket(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
+
+class TicketButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Create ticket",
+            style=discord.ButtonStyle.primary
+        )
+
+    async def callback(self, interaction: discord.Interaction):
         log.info("create channel")
 
 
@@ -32,12 +37,31 @@ class Tickets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def __create_button_view(self):
+        button = TicketButton()
+        buttonview = TicketButtonView()
+
+        buttonview.add_item(button)
+
+        return buttonview
+
     @app_commands.command(
         name="admin_ticket_message_create",
         description="Send the Message for ticket creation",
     )
-    async def admin_ticket_message_create(self, interaction: discord.Interaction):
-        await interaction.channel.send(MESSAGE_TEXT, view=TicketButton)
+    async def admin_ticket_message_create(
+        self,
+        interaction: discord.Interaction
+    ):
+        buttonview = await self.__create_button_view()
+
+        try:
+            await interaction.channel.send(
+                content=MESSAGE_TEXT,
+                view=buttonview
+            )
+        except Exception as e:
+            log.error(e)
 
 
 async def setup(bot: commands.Bot):
